@@ -1,0 +1,292 @@
+# calculator_ui.kv
+#:import get_color_from_hex kivy.utils.get_color_from_hex
+#:import Clock kivy.clock.Clock
+# Aşağıdaki satırı silin veya yorum satırı yapın:
+# #:import webbrowser webbrowser # webbrowser'ı KV içinde kullanılabilir hale getirmek için 
+
+MDScreen:
+    MDBoxLayout:
+        orientation: "vertical"
+
+        MDTopAppBar:
+            id: top_app_bar
+            title: app.title
+            left_action_items: [["calculator-variant", lambda x: self.parent.parent.ids.bottom_nav.switch_tab('calculator_tab')]]
+            right_action_items: [["history", lambda x: app.open_history_dialog(x)],["theme-light-dark", lambda x: app.toggle_theme_style()], ["palette-outline", lambda x: app.open_theme_picker_dialog(x)], ["cog-outline", lambda x: app.open_settings_dialog(x)]]
+            elevation: dp(4)
+
+        MDBottomNavigation:
+            id: bottom_nav
+            on_switch_tabs: app.on_tab_switch(*args)
+
+            MDBottomNavigationItem:
+                name: 'calculator_tab'
+                text: 'Hesapla'
+                icon: 'calculator-variant-outline'
+                MDBoxLayout:
+                    orientation: 'vertical'
+                    padding: dp(6) 
+                    spacing: dp(6) 
+
+                    MDTextField:
+                        id: display
+                        text: "0"
+                        halign: "right"
+                        font_size: app.display_font_size
+                        readonly: True
+                        line_color_focus: app.theme_cls.primary_color
+                        size_hint_y: 0.18 
+                        cursor_blink: False
+                        on_text: app.adjust_display_font_size(self)
+
+                    MDBoxLayout: 
+                        size_hint_y: None 
+                        adaptive_height: True
+                        padding: [dp(4), dp(1)] 
+                        MDLabel:
+                            id: current_mode_label
+                            text: "Mod: Basit" 
+                            halign: "left"
+                            font_style: "Caption"
+                            adaptive_height: True
+                        MDIconButton:
+                            id: deg_rad_toggle
+                            icon: "alpha-d-box" 
+                            on_release: app.toggle_deg_rad_mode()
+                            user_font_size: "17sp" 
+                            pos_hint: {"center_y": .5}
+                            theme_text_color: "Custom"
+                            text_color: app.theme_cls.primary_color
+
+                    MDGridLayout:
+                        id: button_grid
+                        spacing: dp(3) 
+                        padding: dp(3) 
+                        size_hint_y: 0.80
+
+
+            MDBottomNavigationItem:
+                name: 'converter_tab'
+                text: 'Dönüştür'
+                icon: 'swap-horizontal-circle-outline'
+                MDBoxLayout:
+                    orientation: 'vertical'
+                    padding: dp(12)
+                    spacing: dp(12)
+                    MDRelativeLayout:
+                        size_hint_y: None
+                        height: dp(56)
+                        MDDropDownItem:
+                            id: category_dropdown_item
+                            text: "Kategori Seçin"
+                            on_release: app.open_category_menu(self)
+                            pos_hint: {'center_x': .5, 'center_y': .5}
+                    MDBoxLayout:
+                        orientation: 'horizontal'
+                        spacing: dp(10)
+                        size_hint_y: None
+                        height: dp(60)
+                        MDTextField:
+                            id: input_value
+                            hint_text: "Değer"
+                            mode: "fill"
+                            size_hint_x: 0.7
+                            font_size: "16sp"
+                            helper_text_mode: "on_focus"
+                            helper_text: "Dönüştürülecek değeri girin"
+                            on_text_validate: app.perform_conversion()
+                        MDIconButton:
+                            icon: "arrow-left-right-bold-outline"
+                            on_release: app.swap_units()
+                            tooltip_text: "Birimleri Değiştir"
+                            user_font_size: "28sp"
+                            pos_hint: {'center_y': .5}
+                            size_hint_x: 0.3
+                    MDBoxLayout:
+                        orientation: 'horizontal'
+                        size_hint_y: None
+                        height: dp(56)
+                        spacing: dp(10)
+                        MDRelativeLayout:
+                            size_hint_x: 0.5
+                            MDDropDownItem:
+                                id: from_unit_dropdown_item
+                                text: "Kaynak Birim"
+                                on_release: app.open_unit_menu('from', self)
+                                disabled: True
+                        MDRelativeLayout:
+                            size_hint_x: 0.5
+                            MDDropDownItem:
+                                id: to_unit_dropdown_item
+                                text: "Hedef Birim"
+                                on_release: app.open_unit_menu('to', self)
+                                disabled: True
+                    MDFillRoundFlatButton:
+                        text: "Dönüştür"
+                        on_press: app.perform_conversion()
+                        pos_hint: {'center_x': .5}
+                        padding: [dp(20), dp(10)]
+                        font_size: "15sp"
+                    MDBoxLayout:
+                        orientation: "vertical"
+                        padding: [0, dp(10)]
+                        adaptive_height: True
+                        MDLabel:
+                            text: "Sonuç:"
+                            halign: "center"
+                            font_style: "Button"
+                            theme_text_color: "Secondary" 
+                        MDLabel:
+                            id: conversion_result
+                            text: ""
+                            halign: "center"
+                            font_style: "H5"
+                            adaptive_height: True
+                            theme_text_color: "Custom" 
+                    MDSpinner:
+                        id: converter_spinner
+                        size_hint: None, None
+                        size: dp(48), dp(48)
+                        pos_hint: {'center_x': .5, 'center_y': .6}
+                        active: False
+
+<CalcButton@MDFillRoundFlatButton>:
+    size_hint: (1, 1) 
+    font_size: "16sp" if app.calculator_mode == "advanced" else "20sp"
+    padding: [dp(2), dp(2)] 
+
+<NumberButton@CalcButton>:
+    font_style: "H6" 
+    font_size: "18sp" if app.calculator_mode == "advanced" else "22sp"
+
+<OperatorButton@CalcButton>:
+    md_bg_color: app.theme_cls.primary_light if app.theme_cls.theme_style == "Light" else get_color_from_hex("#424242")
+
+<FunctionButton@CalcButton>:
+    font_style: "Subtitle1" 
+    font_size: "14sp" if app.calculator_mode == "advanced" else "16sp" 
+    md_bg_color: app.theme_cls.secondary_container if hasattr(app.theme_cls, 'secondary_container') else get_color_from_hex("#505050")
+
+<SpecialButton@CalcButton>:
+    md_bg_color: get_color_from_hex(app.special_button_color_map.get(self.text, "#757575"))
+
+<EqualsButton@CalcButton>: 
+    font_style: "H4"
+    font_size: "20sp" if app.calculator_mode == "advanced" else "24sp"
+    md_bg_color: app.theme_cls.tertiary_container if hasattr(app.theme_cls, 'tertiary_container') else app.theme_cls.accent_color
+
+<ThemeDialogContent@MDBoxLayout>:
+    orientation: "vertical"
+    spacing: dp(12)
+    size_hint_y: None 
+    height: self.minimum_height 
+    padding: dp(20)
+
+    MDLabel:
+        text: "Tema Ayarları"
+        font_style: "H6"
+        halign: "center"
+        padding: [0, dp(10)]
+
+    MDBoxLayout: 
+        adaptive_height: True
+        MDLabel:
+            text: "Stil:"
+            valign: "center"
+            size_hint_x: 0.3
+        MDLabel:
+            text: " (Üst çubuktan değiştirin)" 
+            size_hint_x: 0.7
+            font_style: "Caption"
+            halign: "left"
+            valign: "center"
+
+    MDLabel:
+        text: "Ana Palet:"
+    ScrollView:
+        size_hint_y: None
+        height: dp(120) 
+        MDList:
+            id: primary_palette_list
+
+    MDLabel:
+        text: "Vurgu Paleti:"
+    ScrollView:
+        size_hint_y: None
+        height: dp(120) 
+        MDList:
+            id: accent_palette_list
+
+<SettingsContent@MDBoxLayout>:
+    orientation: "vertical"
+    spacing: dp(15) 
+    size_hint_y: None
+    height: self.minimum_height
+    padding: dp(20)
+
+    MDLabel:
+        text: "Uygulama Ayarları"
+        font_style: "H6"
+        halign: "center"
+        padding: [0, dp(10)]
+
+    MDBoxLayout: 
+        adaptive_height: True
+        spacing: dp(10)
+        MDLabel:
+            text: "Geçmişi Temizle"
+            valign: "center"
+            size_hint_x: 0.7 
+        MDFillRoundFlatIconButton:
+            icon: "delete-sweep-outline"
+            text: "Temizle"
+            on_release: app.clear_history_and_update()
+            pos_hint: {"center_y": .5}
+            size_hint_x: 0.3
+
+    MDSeparator:
+        height: dp(1)
+
+    MDLabel:
+        text: "Geliştirici: Furkan Sönmez"
+        font_style: "Subtitle1"
+        halign: "left"
+        adaptive_height: True
+        padding: [0, dp(5)]
+
+    MDBoxLayout:
+        adaptive_height: True
+        spacing: dp(10)
+        MDIconButton:
+            icon: "linkedin"
+            user_font_size: "32sp"
+            on_release: app.open_link("https://www.linkedin.com/in/furkan-s%C3%B6nmez-997141324/")
+            tooltip_text: "LinkedIn Profili"
+        MDIconButton:
+            icon: "github"
+            user_font_size: "32sp"
+            on_release: app.open_link("https://github.com/roketbilimcisi")
+            tooltip_text: "GitHub Profili"
+        MDLabel: 
+            text: "" 
+            size_hint_x: 0.6 
+
+<HistoryDialogContent@MDBoxLayout>:
+    orientation: "vertical"
+    size_hint_y: None
+    height: self.minimum_height 
+    padding: dp(10) 
+
+    MDLabel: 
+        text: "Hesaplama Geçmişi" 
+        font_style: "H6" 
+        adaptive_height: True
+        halign: "center"
+        padding: [0, dp(10)]
+
+    ScrollView:
+        size_hint_y: None 
+        height: dp(300)   
+        MDList:
+            id: dialog_history_list
+            adaptive_height: True
